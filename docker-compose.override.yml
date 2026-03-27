@@ -1,0 +1,27 @@
+# Local development overrides: hot reload, source code mounts, debug ports
+# This file is automatically merged by docker-compose for local dev.
+# NOT used in production (Azure Container Apps uses separate image builds).
+
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      # No target override — use full build so prisma generate runs
+    command: sh -c "npx prisma generate && npm run dev"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules      # Preserve container node_modules
+      - /app/.next             # Preserve Next.js build cache
+    environment:
+      NODE_ENV: development
+
+  worker:
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./apps/worker:/app    # Live reload: edits reflected immediately
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG

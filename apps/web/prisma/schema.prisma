@@ -1,0 +1,181 @@
+// ──────────────────────────────────────────────────────────────
+// Prisma Schema — mint_personal
+// Story 1.1: T3 + NextAuth models with UUID IDs and @@map directives
+// Story 1.2: Full schema (Statement, Transaction, CorrectionLog, JobStatus + RLS)
+//
+// ID strategy: UUID throughout (never CUID, never integer).
+// Table naming: @@map("snake_case_plural") so Prisma model names stay PascalCase
+//   but PostgreSQL tables match the architecture convention and SQLAlchemy models.
+// ──────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum JobStage {
+  QUEUED
+  UPLOADING
+  READING
+  CATEGORIZING
+  COMPLETE
+  FAILED
+}
+
+// ─── NextAuth + App User Model ────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  isActive      Boolean   @default(true)
+  passwordHash  String?   // bcrypt hash — populated by Credentials provider (Story 1.3)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // App relations
+  statements          Statement[]
+  transactions        Transaction[]
+  corrections         CorrectionLog[]
+  jobStatuses         JobStatus[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+// NextAuth required models — do not modify structure
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Application Models ───────────────────────────────────────────────────
+
+model Statement {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename    String
+  institution String?
+  uploadedAt  DateTime @default(now())
+
+  transactions Transaction[]
+  jobStatuses  JobStatus[]
+
+  @@index([userId], name: "idx_statements_user_id")
+  @@map("statements")
+}
+
+model Transaction {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statementId  String    @db.Uuid
+  statement    Statement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  date         DateTime
+  merchantRaw  String
+  merchantNorm String
+  amount       Decimal   @db.Decimal(12, 2)
+  category     String?   // null until categorized
+  confidence   Float?    // null until categorized; < 0.70 triggers review queue
+  isDuplicate  Boolean   @default(false)
+  isExcluded   Boolean   @default(false)
+  isReviewed   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@index([userId, date], name: "idx_transactions_user_id_month")
+  @@map("transactions")
+}
+
+model CorrectionLog {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchantPattern   String   // normalized merchant string used for future matching
+  correctedCategory String
+  createdAt         DateTime @default(now())
+
+  @@index([userId], name: "idx_corrections_user_id")
+  @@map("correction_logs")
+}
+
+model JobStatus {
+  id               String     @id @default(uuid()) @db.Uuid
+  userId           String     @db.Uuid
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statementId      String?    @db.Uuid
+  statement        Statement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  stage            JobStage   @default(QUEUED)
+  transactionCount Int        @default(0)
+  errorMessage     String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([userId], name: "idx_job_status_user_id")
+  @@map("job_status")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId], name: "idx_password_reset_tokens_user_id")
+  @@map("password_reset_tokens")
+}

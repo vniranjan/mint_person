@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mint_personal — UX Design Directions</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #1c1917;
+    color: #e7e5e4;
+    padding: 32px;
+  }
+
+  .selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .selector button {
+    padding: 10px 24px;
+    border: 1px solid #57534e;
+    background: #292524;
+    color: #a8a29e;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .selector button:hover { border-color: #a8a29e; color: #e7e5e4; }
+  .selector button.active { background: #fafaf9; color: #1c1917; border-color: #fafaf9; }
+
+  .direction { display: none; }
+  .direction.active { display: block; }
+
+  .label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #78716c;
+    margin-bottom: 16px;
+  }
+
+  /* ─── SHARED APP CHROME ─── */
+  .app {
+    background: #fafaf9;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .nav {
+    height: 56px;
+    background: #ffffff;
+    border-bottom: 1px solid #e7e5e4;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+  }
+
+  .nav-logo {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1c1917;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-spacer { flex: 1; }
+
+  .nav-month {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1c1917;
+  }
+
+  .nav-arrow {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #e7e5e4;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #78716c;
+    font-size: 12px;
+  }
+
+  .nav-upload {
+    padding: 6px 16px;
+    background: #1c1917;
+    color: #fafaf9;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .nav-avatar {
+    width: 32px;
+    height: 32px;
+    background: #e7e5e4;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #78716c;
+  }
+
+  /* ─── REVIEW BANNER ─── */
+  .review-banner {
+    background: #fffbeb;
+    border-bottom: 1px solid #fde68a;
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #92400e;
+  }
+
+  .review-banner .flag { color: #f59e0b; }
+  .review-banner strong { font-weight: 600; }
+  .review-banner .spacer { flex: 1; }
+  .review-btn {
+    padding: 5px 14px;
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .skip-btn {
+    padding: 5px 14px;
+    background: transparent;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* ─── BADGE ─── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-groceries  { background: #dcfce7; color: #15803d; }
+  .badge-dining     { background: #ffedd5; color: #c2410c; }
+  .badge-transport  { background: #dbeafe; color: #1d4ed8; }
+  .badge-shopping   { background: #ede9fe; color: #7c3aed; }
+  .badge-subs       { background: #cffafe; color: #0e7490; }
+  .badge-healthcare { background: #ffe4e6; color: #be123c; }
+  .badge-entertain  { background: #f3e8ff; color: #7e22ce; }
+  .badge-utilities  { background: #f1f5f9; color: #475569; }
+  .badge-amber { background: #fef3c7; color: #b45309; border: 1px solid #fbbf24; }
+
+  /* ─── DIRECTION 1: FOCUSED / SINGLE COLUMN ─── */
+  .d1-main { padding: 32px; max-width: 900px; margin: 0 auto; }
+
+  .d1-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .d1-card {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .d1-card .amount {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1c1917;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+  }
+
+  .d1-card .label {
+    font-size: 12px;
+    color: #78716c;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 0;
+  }
+
+  .d1-chart-wrap {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .d1-chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1c1917;
+    margin-bottom: 20px;
+  }
+
+  .d1-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    height: 140px;
+  }
+
+  .d1-bar-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .d1-bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+  }
+
+  .d1-bar-label { font-size: 10px; color: #78716c; text-align: center; }
+  .d1-bar-amt { font-size: 11px; font-weight: 600; color: #1c1917; font-variant-numeric: tabular-nums; }
+
+  .d1-table {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .d1-table-header {
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto 140px 40px;
+    gap: 12px;
+    border-bottom: 1px solid #e7e5e4;
+    background: #fafaf9;
+  }
+
+  .d1-table-header span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #78716c;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .d1-row {
+    padding: 11px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto 140px 40px;
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid #f5f5f4;
+  }
+
+  .d1-row:last-child { border-bottom: none; }
+  .d1-row:hover { background: #fafaf9; }
+
+  .d1-merchant { font-size: 13px; color: #1c1917; font-weight: 500; }
+  .d1-date { font-size: 12px; color: #a8a29e; }
+  .d1-amount { font-size: 13px; font-weight: 500; color: #1c1917; font-variant-numeric: tabular-nums; text-align: right; }
+
+  .d1-flag { color: #f59e0b; font-size: 14px; text-align: center; cursor: pointer; }
+
+  /* ─── DIRECTION 2: SPLIT LAYOUT ─── */
+  .d2-body {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 580px;
+  }
+
+  .d2-sidebar {
+    background: #fff;
+    border-right: 1px solid #e7e5e4;
+    padding: 24px 0;
+  }
+
+  .d2-sidebar-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a8a29e;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0 20px;
+    margin-bottom: 12px;
+  }
+
+  .d2-sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 9px 20px;
+    gap: 12px;
+    cursor: pointer;
+  }
+
+  .d2-sidebar-item:hover { background: #fafaf9; }
+  .d2-sidebar-item.active { background: #f5f5f4; }
+
+  .d2-cat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .d2-cat-name { font-size: 13px; color: #1c1917; flex: 1; }
+  .d2-cat-amt { font-size: 13px; font-weight: 500; color: #1c1917; font-variant-numeric: tabular-nums; }
+
+  .d2-sidebar-divider { height: 1px; background: #e7e5e4; margin: 12px 20px; }
+
+  .d2-total-row {
+    display: flex;
+    padding: 0 20px;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1c1917;
+  }
+
+  .d2-main { padding: 24px 28px; background: #fafaf9; }
+
+  .d2-chart-wrap {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .d2-chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .d2-chart-title { font-size: 13px; font-weight: 600; color: #1c1917; }
+  .d2-chart-sub { font-size: 12px; color: #78716c; }
+
+  .d2-mini-bars {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    height: 60px;
+  }
+
+  .d2-mini-bar {
+    flex: 1;
+    border-radius: 3px 3px 0 0;
+    opacity: 0.7;
+  }
+
+  .d2-mini-bar.current { opacity: 1; }
+
+  .d2-table-wrap {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .d2-table-header {
+    padding: 10px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto 120px;
+    gap: 12px;
+    border-bottom: 1px solid #e7e5e4;
+    background: #fafaf9;
+  }
+
+  .d2-table-header span { font-size: 11px; font-weight: 600; color: #78716c; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .d2-row {
+    padding: 10px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto 120px;
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid #f5f5f4;
+  }
+
+  .d2-row:last-child { border-bottom: none; }
+  .d2-merchant { font-size: 13px; color: #1c1917; font-weight: 500; }
+  .d2-date { font-size: 11px; color: #a8a29e; }
+  .d2-amount { font-size: 13px; font-weight: 500; color: #1c1917; font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ─── DIRECTION 3: MINIMAL / EDITORIAL ─── */
+  .d3-main { padding: 40px 48px; max-width: 800px; margin: 0 auto; }
+
+  .d3-heading {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1c1917;
+    letter-spacing: -0.03em;
+    margin-bottom: 4px;
+  }
+
+  .d3-sub {
+    font-size: 14px;
+    color: #78716c;
+    margin-bottom: 40px;
+  }
+
+  .d3-breakdown {
+    margin-bottom: 40px;
+  }
+
+  .d3-breakdown-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a8a29e;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+  }
+
+  .d3-cat-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f4;
+    gap: 16px;
+  }
+
+  .d3-cat-row:last-child { border-bottom: none; }
+
+  .d3-cat-name { font-size: 14px; color: #1c1917; flex: 1; }
+  .d3-cat-bar-wrap { width: 160px; height: 4px; background: #f5f5f4; border-radius: 2px; overflow: hidden; }
+  .d3-cat-bar { height: 100%; border-radius: 2px; }
+  .d3-cat-amt { font-size: 14px; font-weight: 500; color: #1c1917; font-variant-numeric: tabular-nums; width: 80px; text-align: right; }
+  .d3-cat-pct { font-size: 12px; color: #a8a29e; width: 40px; text-align: right; }
+
+  .d3-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a8a29e;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .d3-tx-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f4;
+    gap: 12px;
+  }
+
+  .d3-tx-row:last-child { border-bottom: none; }
+  .d3-tx-merchant { font-size: 13px; color: #1c1917; font-weight: 500; flex: 1; }
+  .d3-tx-date { font-size: 12px; color: #a8a29e; }
+  .d3-tx-amt { font-size: 13px; font-weight: 500; color: #1c1917; font-variant-numeric: tabular-nums; }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    text-align: center;
+    background: #fafaf9;
+  }
+
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    border: 2px dashed #d6d3d1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #a8a29e;
+  }
+
+  .empty-title { font-size: 16px; font-weight: 600; color: #1c1917; margin-bottom: 8px; }
+  .empty-sub { font-size: 14px; color: #78716c; margin-bottom: 24px; max-width: 320px; }
+
+  .upload-btn {
+    padding: 10px 24px;
+    background: #1c1917;
+    color: #fafaf9;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ─── UPLOAD PROGRESS ─── */
+  .upload-progress {
+    padding: 32px;
+    background: #fff;
+    margin: 0 24px 24px;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+  }
+
+  .upload-file { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .upload-file-icon { font-size: 24px; }
+  .upload-file-name { font-size: 14px; font-weight: 500; color: #1c1917; }
+  .upload-file-size { font-size: 12px; color: #a8a29e; }
+
+  .upload-stages { display: flex; flex-direction: column; gap: 12px; }
+
+  .stage {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  .stage-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .stage.done .stage-dot { background: #059669; }
+  .stage.active .stage-dot { background: #f59e0b; }
+  .stage.pending .stage-dot { background: #e7e5e4; }
+
+  .stage.done { color: #1c1917; }
+  .stage.active { color: #1c1917; font-weight: 500; }
+  .stage.pending { color: #a8a29e; }
+
+  .progress-bar-wrap { height: 4px; background: #f5f5f4; border-radius: 2px; overflow: hidden; margin-top: 8px; }
+  .progress-bar-fill { height: 100%; background: #1c1917; border-radius: 2px; }
+
+  /* ─── TOAST ─── */
+  .toast-wrap { position: relative; padding: 0 24px 24px; }
+
+  .toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    font-size: 13px;
+    color: #1c1917;
+  }
+
+  .toast-icon { color: #059669; font-size: 16px; }
+
+  /* ─── LEGEND ─── */
+  .direction-info {
+    max-width: 1200px;
+    margin: 0 auto 24px;
+    padding: 20px 24px;
+    background: #292524;
+    border-radius: 10px;
+    border: 1px solid #44403c;
+  }
+
+  .direction-info h3 { font-size: 15px; font-weight: 600; color: #e7e5e4; margin-bottom: 6px; }
+  .direction-info p { font-size: 13px; color: #a8a29e; line-height: 1.6; }
+
+  .direction-tabs {
+    display: flex;
+    gap: 4px;
+    max-width: 1200px;
+    margin: 0 auto 12px;
+  }
+
+  .dtab {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #78716c;
+    background: transparent;
+  }
+
+  .dtab:hover { color: #a8a29e; }
+  .dtab.active { background: #44403c; color: #e7e5e4; }
+</style>
+</head>
+<body>
+
+<div style="max-width:1200px;margin:0 auto 24px;display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <div style="font-size:22px;font-weight:700;color:#fafaf9;letter-spacing:-0.02em;">mint_personal</div>
+    <div style="font-size:13px;color:#78716c;margin-top:2px;">UX Design Directions — 3 explorations</div>
+  </div>
+  <div style="font-size:12px;color:#57534e;">Use tabs below to switch directions</div>
+</div>
+
+<div class="selector">
+  <button class="active" onclick="show('d1',this)">Direction 1 — Focused Single Column</button>
+  <button onclick="show('d2',this)">Direction 2 — Split Sidebar</button>
+  <button onclick="show('d3',this)">Direction 3 — Editorial Minimal</button>
+  <button onclick="show('empty',this)">Empty State</button>
+  <button onclick="show('upload',this)">Upload Pipeline</button>
+  <button onclick="show('review',this)">Review Queue</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DIRECTION 1: FOCUSED SINGLE COLUMN
+════════════════════════════════════════════════ -->
+<div class="direction active" id="d1">
+  <div class="direction-info">
+    <h3>Direction 1 — Focused Single Column</h3>
+    <p>Clean, centered, uncluttered. Summary cards above a chart above the transaction list — top-to-bottom reading flow. Information hierarchy is explicit: totals first, breakdown second, detail third. Generous whitespace creates calm. Best for users who want a clear answer before drilling in.</p>
+  </div>
+  <div class="app">
+    <div class="nav">
+      <span class="nav-logo">mint_personal</span>
+      <div class="nav-spacer"></div>
+      <div class="nav-month">
+        <div class="nav-arrow">‹</div>
+        <span>October 2025</span>
+        <div class="nav-arrow">›</div>
+      </div>
+      <div class="nav-upload">+ Upload</div>
+      <div class="nav-avatar">N</div>
+    </div>
+    <div class="review-banner">
+      <span class="flag">⚑</span>
+      <span><strong>12 transactions</strong> need review — AI flagged low confidence</span>
+      <div class="spacer"></div>
+      <button class="review-btn">Review Now</button>
+      <button class="skip-btn">Skip</button>
+    </div>
+    <div class="d1-main">
+      <div class="d1-summary">
+        <div class="d1-card">
+          <div class="amount">$2,847</div>
+          <div class="label">Total spent</div>
+        </div>
+        <div class="d1-card">
+          <div class="amount">$420</div>
+          <div class="label">Groceries</div>
+        </div>
+        <div class="d1-card">
+          <div class="amount">$310</div>
+          <div class="label">Dining</div>
+        </div>
+        <div class="d1-card">
+          <div class="amount">$87</div>
+          <div class="label">Subscriptions</div>
+        </div>
+      </div>
+
+      <div class="d1-chart-wrap">
+        <div class="d1-chart-title">Spending by Category — October 2025</div>
+        <div class="d1-bar-chart">
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$420</div>
+            <div class="d1-bar" style="height:100%;background:#bbf7d0;"></div>
+            <div class="d1-bar-label">Groceries</div>
+          </div>
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$310</div>
+            <div class="d1-bar" style="height:74%;background:#fed7aa;"></div>
+            <div class="d1-bar-label">Dining</div>
+          </div>
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$245</div>
+            <div class="d1-bar" style="height:58%;background:#ddd6fe;"></div>
+            <div class="d1-bar-label">Shopping</div>
+          </div>
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$180</div>
+            <div class="d1-bar" style="height:43%;background:#bfdbfe;"></div>
+            <div class="d1-bar-label">Transport</div>
+          </div>
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$120</div>
+            <div class="d1-bar" style="height:29%;background:#fce7f3;"></div>
+            <div class="d1-bar-label">Healthcare</div>
+          </div>
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$87</div>
+            <div class="d1-bar" style="height:21%;background:#a5f3fc;"></div>
+            <div class="d1-bar-label">Subscriptions</div>
+          </div>
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$65</div>
+            <div class="d1-bar" style="height:15%;background:#e9d5ff;"></div>
+            <div class="d1-bar-label">Entertainment</div>
+          </div>
+          <div class="d1-bar-group">
+            <div class="d1-bar-amt">$58</div>
+            <div class="d1-bar" style="height:14%;background:#e2e8f0;"></div>
+            <div class="d1-bar-label">Utilities</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d1-table">
+        <div class="d1-table-header">
+          <span>Merchant</span>
+          <span>Date</span>
+          <span style="text-align:center;">Category</span>
+          <span></span>
+        </div>
+        <div class="d1-row">
+          <div><div class="d1-merchant">Whole Foods Market</div></div>
+          <div class="d1-date">Oct 28</div>
+          <div style="text-align:center;"><span class="badge badge-groceries">Groceries</span></div>
+          <div class="d1-amount">$94.12</div>
+        </div>
+        <div class="d1-row">
+          <div><div class="d1-merchant">Uber Eats</div></div>
+          <div class="d1-date">Oct 27</div>
+          <div style="text-align:center;"><span class="badge badge-dining">Dining</span></div>
+          <div class="d1-amount">$38.50</div>
+        </div>
+        <div class="d1-row">
+          <div><div class="d1-merchant">Netflix</div></div>
+          <div class="d1-date">Oct 25</div>
+          <div style="text-align:center;"><span class="badge badge-subs">Subscriptions</span></div>
+          <div class="d1-amount">$15.99</div>
+        </div>
+        <div class="d1-row">
+          <div><div class="d1-merchant">SQ *BLUE BOTTLE #4821</div></div>
+          <div class="d1-date">Oct 24</div>
+          <div style="text-align:center;"><span class="badge badge-amber">⚑ Needs review</span></div>
+          <div class="d1-amount">$7.50</div>
+        </div>
+        <div class="d1-row">
+          <div><div class="d1-merchant">Amazon</div></div>
+          <div class="d1-date">Oct 23</div>
+          <div style="text-align:center;"><span class="badge badge-shopping">Shopping</span></div>
+          <div class="d1-amount">$42.99</div>
+        </div>
+        <div class="d1-row">
+          <div><div class="d1-merchant">Lyft</div></div>
+          <div class="d1-date">Oct 22</div>
+          <div style="text-align:center;"><span class="badge badge-transport">Transport</span></div>
+          <div class="d1-amount">$18.75</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DIRECTION 2: SPLIT SIDEBAR
+════════════════════════════════════════════════ -->
+<div class="direction" id="d2">
+  <div class="direction-info">
+    <h3>Direction 2 — Split Sidebar</h3>
+    <p>Category breakdown always visible in the left sidebar as you scroll through transactions. Persistent context: you always know where you stand in each category without scrolling up. The sidebar doubles as a filter — click a category to show only those transactions. Dense but organized. Best for power users who review multiple categories per session.</p>
+  </div>
+  <div class="app">
+    <div class="nav">
+      <span class="nav-logo">mint_personal</span>
+      <div class="nav-spacer"></div>
+      <div class="nav-month">
+        <div class="nav-arrow">‹</div>
+        <span>October 2025</span>
+        <div class="nav-arrow">›</div>
+      </div>
+      <div class="nav-upload">+ Upload</div>
+      <div class="nav-avatar">N</div>
+    </div>
+    <div class="review-banner">
+      <span class="flag">⚑</span>
+      <span><strong>12 transactions</strong> need review</span>
+      <div class="spacer"></div>
+      <button class="review-btn">Review Now</button>
+      <button class="skip-btn">Skip</button>
+    </div>
+    <div class="d2-body">
+      <div class="d2-sidebar">
+        <div class="d2-sidebar-title">By Category</div>
+        <div class="d2-sidebar-item active">
+          <div class="d2-cat-dot" style="background:#16a34a;"></div>
+          <div class="d2-cat-name">Groceries</div>
+          <div class="d2-cat-amt">$420</div>
+        </div>
+        <div class="d2-sidebar-item">
+          <div class="d2-cat-dot" style="background:#ea580c;"></div>
+          <div class="d2-cat-name">Dining</div>
+          <div class="d2-cat-amt">$310</div>
+        </div>
+        <div class="d2-sidebar-item">
+          <div class="d2-cat-dot" style="background:#7c3aed;"></div>
+          <div class="d2-cat-name">Shopping</div>
+          <div class="d2-cat-amt">$245</div>
+        </div>
+        <div class="d2-sidebar-item">
+          <div class="d2-cat-dot" style="background:#1d4ed8;"></div>
+          <div class="d2-cat-name">Transport</div>
+          <div class="d2-cat-amt">$180</div>
+        </div>
+        <div class="d2-sidebar-item">
+          <div class="d2-cat-dot" style="background:#be123c;"></div>
+          <div class="d2-cat-name">Healthcare</div>
+          <div class="d2-cat-amt">$120</div>
+        </div>
+        <div class="d2-sidebar-item">
+          <div class="d2-cat-dot" style="background:#0e7490;"></div>
+          <div class="d2-cat-name">Subscriptions</div>
+          <div class="d2-cat-amt">$87</div>
+        </div>
+        <div class="d2-sidebar-item">
+          <div class="d2-cat-dot" style="background:#7e22ce;"></div>
+          <div class="d2-cat-name">Entertainment</div>
+          <div class="d2-cat-amt">$65</div>
+        </div>
+        <div class="d2-sidebar-item">
+          <div class="d2-cat-dot" style="background:#475569;"></div>
+          <div class="d2-cat-name">Utilities</div>
+          <div class="d2-cat-amt">$58</div>
+        </div>
+        <div class="d2-sidebar-divider"></div>
+        <div class="d2-total-row">
+          <span>Total</span>
+          <span>$2,847</span>
+        </div>
+      </div>
+      <div class="d2-main">
+        <div class="d2-chart-wrap">
+          <div class="d2-chart-header">
+            <div class="d2-chart-title">Monthly trend — Groceries</div>
+            <div class="d2-chart-sub">6-month view</div>
+          </div>
+          <div class="d2-mini-bars">
+            <div class="d2-mini-bar" style="height:52%;background:#bbf7d0;"></div>
+            <div class="d2-mini-bar" style="height:68%;background:#bbf7d0;"></div>
+            <div class="d2-mini-bar" style="height:44%;background:#bbf7d0;"></div>
+            <div class="d2-mini-bar" style="height:72%;background:#bbf7d0;"></div>
+            <div class="d2-mini-bar" style="height:60%;background:#bbf7d0;"></div>
+            <div class="d2-mini-bar current" style="height:100%;background:#16a34a;"></div>
+          </div>
+        </div>
+        <div class="d2-table-wrap">
+          <div class="d2-table-header">
+            <span>Merchant</span>
+            <span>Date</span>
+            <span style="text-align:right;">Amount</span>
+          </div>
+          <div class="d2-row">
+            <div><div class="d2-merchant">Whole Foods Market</div></div>
+            <div class="d2-date">Oct 28</div>
+            <div class="d2-amount">$94.12</div>
+          </div>
+          <div class="d2-row">
+            <div><div class="d2-merchant">Trader Joe's</div></div>
+            <div class="d2-date">Oct 21</div>
+            <div class="d2-amount">$67.88</div>
+          </div>
+          <div class="d2-row">
+            <div><div class="d2-merchant">Safeway</div></div>
+            <div class="d2-date">Oct 14</div>
+            <div class="d2-amount">$112.40</div>
+          </div>
+          <div class="d2-row">
+            <div><div class="d2-merchant">Whole Foods Market</div></div>
+            <div class="d2-date">Oct 7</div>
+            <div class="d2-amount">$88.30</div>
+          </div>
+          <div class="d2-row">
+            <div><div class="d2-merchant">Trader Joe's</div></div>
+            <div class="d2-date">Oct 3</div>
+            <div class="d2-amount">$57.30</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DIRECTION 3: EDITORIAL MINIMAL
+════════════════════════════════════════════════ -->
+<div class="direction" id="d3">
+  <div class="direction-info">
+    <h3>Direction 3 — Editorial Minimal</h3>
+    <p>Typographic-first, almost like a well-designed financial report. The category breakdown is a simple horizontal bar list — no chart widget, just data with proportion bars. Maximum whitespace, large heading, everything else subordinate. Feels premium and deliberate. Best for the "calm clarity" emotional goal — nothing competes for attention.</p>
+  </div>
+  <div class="app">
+    <div class="nav">
+      <span class="nav-logo">mint_personal</span>
+      <div class="nav-spacer"></div>
+      <div class="nav-month">
+        <div class="nav-arrow">‹</div>
+        <span>October 2025</span>
+        <div class="nav-arrow">›</div>
+      </div>
+      <div class="nav-upload">+ Upload</div>
+      <div class="nav-avatar">N</div>
+    </div>
+    <div class="review-banner">
+      <span class="flag">⚑</span>
+      <span><strong>12 transactions</strong> need review</span>
+      <div class="spacer"></div>
+      <button class="review-btn">Review Now</button>
+      <button class="skip-btn">Skip</button>
+    </div>
+    <div class="d3-main">
+      <div class="d3-heading">October 2025</div>
+      <div class="d3-sub">$2,847 total · 147 transactions · 12 need review</div>
+
+      <div class="d3-breakdown">
+        <div class="d3-breakdown-title">Spending breakdown</div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Groceries</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:100%;background:#16a34a;"></div></div>
+          <div class="d3-cat-amt">$420</div>
+          <div class="d3-cat-pct">14.8%</div>
+        </div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Dining</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:74%;background:#ea580c;"></div></div>
+          <div class="d3-cat-amt">$310</div>
+          <div class="d3-cat-pct">10.9%</div>
+        </div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Shopping</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:58%;background:#7c3aed;"></div></div>
+          <div class="d3-cat-amt">$245</div>
+          <div class="d3-cat-pct">8.6%</div>
+        </div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Transport</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:43%;background:#1d4ed8;"></div></div>
+          <div class="d3-cat-amt">$180</div>
+          <div class="d3-cat-pct">6.3%</div>
+        </div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Healthcare</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:29%;background:#be123c;"></div></div>
+          <div class="d3-cat-amt">$120</div>
+          <div class="d3-cat-pct">4.2%</div>
+        </div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Subscriptions</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:21%;background:#0e7490;"></div></div>
+          <div class="d3-cat-amt">$87</div>
+          <div class="d3-cat-pct">3.1%</div>
+        </div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Entertainment</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:15%;background:#7e22ce;"></div></div>
+          <div class="d3-cat-amt">$65</div>
+          <div class="d3-cat-pct">2.3%</div>
+        </div>
+        <div class="d3-cat-row">
+          <div class="d3-cat-name">Utilities</div>
+          <div class="d3-cat-bar-wrap"><div class="d3-cat-bar" style="width:14%;background:#475569;"></div></div>
+          <div class="d3-cat-amt">$58</div>
+          <div class="d3-cat-pct">2.0%</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="d3-section-title">Recent transactions</div>
+        <div class="d3-tx-row">
+          <div class="d3-tx-merchant">Whole Foods Market</div>
+          <div class="d3-tx-date">Oct 28</div>
+          <span class="badge badge-groceries" style="margin:0 12px;">Groceries</span>
+          <div class="d3-tx-amt">$94.12</div>
+        </div>
+        <div class="d3-tx-row">
+          <div class="d3-tx-merchant">Uber Eats</div>
+          <div class="d3-tx-date">Oct 27</div>
+          <span class="badge badge-dining" style="margin:0 12px;">Dining</span>
+          <div class="d3-tx-amt">$38.50</div>
+        </div>
+        <div class="d3-tx-row">
+          <div class="d3-tx-merchant">Netflix</div>
+          <div class="d3-tx-date">Oct 25</div>
+          <span class="badge badge-subs" style="margin:0 12px;">Subscriptions</span>
+          <div class="d3-tx-amt">$15.99</div>
+        </div>
+        <div class="d3-tx-row">
+          <div class="d3-tx-merchant">SQ *BLUE BOTTLE #4821</div>
+          <div class="d3-tx-date">Oct 24</div>
+          <span class="badge badge-amber" style="margin:0 12px;">⚑ Needs review</span>
+          <div class="d3-tx-amt">$7.50</div>
+        </div>
+        <div class="d3-tx-row">
+          <div class="d3-tx-merchant">Amazon</div>
+          <div class="d3-tx-date">Oct 23</div>
+          <span class="badge badge-shopping" style="margin:0 12px;">Shopping</span>
+          <div class="d3-tx-amt">$42.99</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     EMPTY STATE
+════════════════════════════════════════════════ -->
+<div class="direction" id="empty">
+  <div class="direction-info">
+    <h3>Empty State — First Visit</h3>
+    <p>The blank dashboard a new user sees. Single CTA, no onboarding wizard, no tour. The drag-and-drop zone is the entire focus. The product communicates confidence: it knows what it does, and it's waiting for you to start.</p>
+  </div>
+  <div class="app">
+    <div class="nav">
+      <span class="nav-logo">mint_personal</span>
+      <div class="nav-spacer"></div>
+      <div class="nav-avatar">N</div>
+    </div>
+    <div class="empty-state" style="min-height:480px;">
+      <div class="empty-icon">↑</div>
+      <div class="empty-title">Upload a statement to get started</div>
+      <div class="empty-sub">Drag a CSV file here, or click to browse. Supports Chase, Amex, Bank of America, Capital One, and Wells Fargo.</div>
+      <div class="upload-btn">↑ &nbsp;Choose file</div>
+      <div style="margin-top:16px;font-size:12px;color:#a8a29e;">or drag and drop anywhere on this page</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     UPLOAD PIPELINE
+════════════════════════════════════════════════ -->
+<div class="direction" id="upload">
+  <div class="direction-info">
+    <h3>Upload Processing Pipeline</h3>
+    <p>Real-time stage labels replace a generic spinner. Each stage updates in sequence with the current count or status. Users know exactly what's happening and roughly how long is left. The progress bar fills continuously; the stage label provides context.</p>
+  </div>
+  <div class="app">
+    <div class="nav">
+      <span class="nav-logo">mint_personal</span>
+      <div class="nav-spacer"></div>
+      <div class="nav-avatar">N</div>
+    </div>
+    <div style="padding:24px;">
+      <div class="upload-progress">
+        <div class="upload-file">
+          <div class="upload-file-icon">📄</div>
+          <div>
+            <div class="upload-file-name">chase-checking-oct-2025.csv</div>
+            <div class="upload-file-size">47 KB · 147 transactions</div>
+          </div>
+        </div>
+        <div class="progress-bar-wrap" style="margin-bottom:20px;">
+          <div class="progress-bar-fill" style="width:72%;transition:width 1s;"></div>
+        </div>
+        <div class="upload-stages">
+          <div class="stage done">
+            <div class="stage-dot"></div>
+            <span>✓ Uploaded successfully</span>
+          </div>
+          <div class="stage done">
+            <div class="stage-dot"></div>
+            <span>✓ Reading transactions — 147 found</span>
+          </div>
+          <div class="stage active">
+            <div class="stage-dot"></div>
+            <span>Categorizing… 104 of 147</span>
+          </div>
+          <div class="stage pending">
+            <div class="stage-dot"></div>
+            <span>Reviewing confidence scores</span>
+          </div>
+          <div class="stage pending">
+            <div class="stage-dot"></div>
+            <span>Ready</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     REVIEW QUEUE
+════════════════════════════════════════════════ -->
+<div class="direction" id="review">
+  <div class="direction-info">
+    <h3>Review Queue + Toast Confirmation</h3>
+    <p>Flagged transactions inline below the amber banner — no modal. Each correction is click → popover → select → done. The toast appears after the first correction to teach the learning mechanic through experience. "Remembered for next time" sets the expectation that future uploads will improve.</p>
+  </div>
+  <div class="app">
+    <div class="nav">
+      <span class="nav-logo">mint_personal</span>
+      <div class="nav-spacer"></div>
+      <div class="nav-month">
+        <div class="nav-arrow">‹</div>
+        <span>October 2025</span>
+        <div class="nav-arrow">›</div>
+      </div>
+      <div class="nav-upload">+ Upload</div>
+      <div class="nav-avatar">N</div>
+    </div>
+    <div class="review-banner">
+      <span class="flag">⚑</span>
+      <span><strong>11 transactions</strong> need review — 1 corrected</span>
+      <div class="spacer"></div>
+      <button class="skip-btn">Skip remaining</button>
+    </div>
+    <div style="padding:20px 24px;">
+      <div style="font-size:12px;font-weight:600;color:#a8a29e;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Needs review</div>
+      <div class="d1-table" style="margin-bottom:20px;">
+        <div class="d1-row" style="background:#fffbeb;">
+          <div><div class="d1-merchant">SQ *BLUE BOTTLE #4821</div><div class="d1-date">Oct 24 · Square merchant</div></div>
+          <div style="font-size:12px;color:#a8a29e;"></div>
+          <div style="text-align:center;"><span class="badge badge-amber">⚑ Uncategorized</span></div>
+          <div class="d1-amount">$7.50</div>
+        </div>
+        <div class="d1-row" style="background:#fffbeb;">
+          <div><div class="d1-merchant">AMZN MKTP US*AB3C92</div><div class="d1-date">Oct 22 · Amazon variant</div></div>
+          <div></div>
+          <div style="text-align:center;"><span class="badge badge-amber">⚑ Uncategorized</span></div>
+          <div class="d1-amount">$29.99</div>
+        </div>
+        <div class="d1-row" style="background:#fffbeb;">
+          <div><div class="d1-merchant">LYFT *RIDE 10/21</div><div class="d1-date">Oct 21 · Low confidence</div></div>
+          <div></div>
+          <div style="text-align:center;"><span class="badge badge-amber">⚑ Dining?</span></div>
+          <div class="d1-amount">$14.25</div>
+        </div>
+        <div class="d1-row" style="opacity:0.5;">
+          <div><div class="d1-merchant">Uber Eats</div><div class="d1-date" style="color:#059669;">✓ Corrected · Also applied to 2 similar</div></div>
+          <div></div>
+          <div style="text-align:center;"><span class="badge badge-dining">Dining</span></div>
+          <div class="d1-amount">$38.50</div>
+        </div>
+      </div>
+      <div class="toast-wrap">
+        <div class="toast">
+          <span class="toast-icon">✓</span>
+          <span><strong>Uber Eats</strong> — remembered for next time</span>
+          <span style="margin-left:8px;font-size:12px;color:#a8a29e;">Also applied to 2 similar merchants in this file</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
+  document.querySelectorAll('.selector button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

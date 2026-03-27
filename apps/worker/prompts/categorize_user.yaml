@@ -1,0 +1,19 @@
+# Categorization user prompt (transaction batch)
+# Jinja2 template — variables injected at runtime:
+#   {{ transactions }}: list of {id, merchant_raw, amount} dicts
+#
+# Full prompt engineering → Story 3.1
+prompt: |
+  Categorize the following transactions. Return a JSON array with one object per transaction.
+
+  Each object must have:
+  - "id": the transaction id (unchanged from input)
+  - "category": one of the valid categories
+  - "confidence": float 0.0-1.0
+
+  Transactions:
+  {% for tx in transactions %}
+  - id: {{ tx.id }}, merchant: "{{ tx.merchant_raw }}", amount: {{ tx.amount }}
+  {% endfor %}
+
+  Return ONLY valid JSON. No explanation, no markdown.

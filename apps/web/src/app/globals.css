@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Inter font variable ── */
+@layer base {
+  :root {
+    font-family: var(--font-inter), system-ui, sans-serif;
+
+    /* ── UX-DR1: Stone/amber design token CSS variables ── */
+    /* Background & surface */
+    --color-canvas: 250 250 249;       /* stone-50  */
+    --color-surface-subtle: 245 245 244; /* stone-100 */
+    --color-border: 231 229 228;       /* stone-200 */
+
+    /* Text */
+    --color-text-primary: 28 25 23;    /* stone-900 */
+    --color-text-secondary: 120 113 108; /* stone-500 */
+    --color-text-muted: 168 162 158;   /* stone-400 */
+
+    /* Accent: amber */
+    --color-accent-flag: 251 191 36;   /* amber-400 */
+    --color-accent-flag-bg: 255 251 235; /* amber-50 */
+    --color-accent-flag-text: 180 83 9; /* amber-700 */
+
+    /* Semantic */
+    --color-success: 5 150 105;        /* emerald-600 */
+    --color-destructive: 220 38 38;    /* red-600     */
+
+    /* ── shadcn/ui CSS variables (stone base theme) ── */
+    --background: 50 14.3% 97.1%;         /* stone-50  */
+    --foreground: 20 14.3% 4.1%;          /* stone-900 */
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 24 9.8% 10%;               /* stone-900 */
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 60 4.8% 95.9%;           /* stone-100 */
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;    /* stone-500 */
+    --accent: 43 96% 56%;                 /* amber-400 */
+    --accent-foreground: 26 83.3% 14.1%; /* amber-900 */
+    --destructive: 0 84.2% 60.2%;         /* red-500   */
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 20 5.9% 90%;               /* stone-200 */
+    --input: 20 5.9% 90%;
+    --ring: 24 9.8% 10%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-color: rgb(var(--color-canvas));
+    color: rgb(var(--color-text-primary));
+  }
+
+  /* ── UX-DR3: Typography hierarchy ── */
+  /* Page title: text-xl font-semibold (apply via class) */
+  /* Section label: text-sm font-medium text-stone-500 (apply via class) */
+  /* Body/data: text-sm text-stone-900 (base) */
+  /* Caption: text-xs text-stone-400 (apply via class) */
+  /* Amount: text-sm font-medium tabular-nums (apply via class) */
+}
+
+/* ── UX-DR18: prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Progress bar animation (UploadPipeline — Story 2.3) */
+  .progress-bar-animated {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Fade transition (stage labels — UploadPipeline) */
+  .fade-transition {
+    opacity: 1 !important;
+    transition: none !important;
+  }
+}
+
+/* ── Accessibility: skip-to-content link (UX-DR17) ── */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-to-content:focus {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  background: rgb(var(--color-text-primary));
+  color: rgb(var(--color-canvas));
+  border-radius: var(--radius);
+  z-index: 9999;
+  font-size: 0.875rem;
+  font-weight: 500;
+}

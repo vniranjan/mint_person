@@ -1,0 +1,80 @@
+name: Deploy Worker
+
+# Trigger only after the CI workflow completes successfully on main.
+# This ensures broken code never reaches production (CI gate).
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+# Required for OIDC authentication to Azure
+permissions:
+  id-token: write
+  contents: read
+
+# Cancel any in-progress deploy for this service when a newer commit lands.
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: true
+
+# Required GitHub repository secrets:
+#   AZURE_CLIENT_ID           — Entra ID App Registration client ID (OIDC federated)
+#   AZURE_TENANT_ID           — Entra tenant ID
+#   AZURE_SUBSCRIPTION_ID     — Azure subscription ID
+#   ACR_NAME                  — Registry name only, e.g. "mintregistry" (for az acr login)
+#   ACR_LOGIN_SERVER          — Full FQDN, e.g. "mintregistry.azurecr.io" (for image tags)
+#   WORKER_CONTAINER_APP_NAME — Name of the worker Azure Container App
+#   RESOURCE_GROUP            — Resource group containing the Container Apps
+#
+# NOTE: Pin action versions to SHA digests before production use to mitigate
+# supply chain attacks (e.g. actions/checkout@<full-sha> # v4).
+
+jobs:
+  deploy:
+    name: Build and Deploy Worker Container
+    runs-on: ubuntu-latest
+    # Only run when CI passed — skip on failure or cancellation.
+    if: github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # workflow_run events checkout the workflow ref, not the triggering commit.
+          # Use the head SHA from the triggering workflow to build the correct code.
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Azure login (OIDC — no stored credentials)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set short git SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Log in to Azure Container Registry
+        env:
+          ACR_NAME: ${{ secrets.ACR_NAME }}
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Build and push Docker image
+        env:
+          ACR_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+        run: |
+          IMAGE="$ACR_SERVER/mint-worker:$SHORT_SHA"
+          docker build -t "$IMAGE" apps/worker/
+          docker push "$IMAGE"
+
+      - name: Deploy to Azure Container App
+        env:
+          ACR_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          CONTAINER_APP: ${{ secrets.WORKER_CONTAINER_APP_NAME }}
+          RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+        run: |
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_SERVER/mint-worker:$SHORT_SHA"

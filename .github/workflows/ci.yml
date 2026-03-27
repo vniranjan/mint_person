@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# Limit CI token to read-only to reduce blast radius if a compromised
+# dependency or action attempts to use the GITHUB_TOKEN.
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint, Type-check, and Test
+    runs-on: ubuntu-latest
+
+    services:
+      # PostgreSQL for RLS integration tests (added in Story 1.2)
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: mintuser
+          POSTGRES_PASSWORD: mintpassword
+          POSTGRES_DB: mintdb_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://mintuser:mintpassword@localhost:5432/mintdb_test
+      NEXTAUTH_SECRET: ci-test-secret
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_SECRET: ci-test-secret
+      # Resend is fire-and-forget in tests; dummy key prevents import errors
+      RESEND_API_KEY: ci-skip
+      RESEND_FROM_EMAIL: noreply@example.com
+      APP_URL: http://localhost:3000
+      # Azurite not needed for unit tests — mocked in test suite
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Node.js / TypeScript ──
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Node dependencies
+        # Must run at monorepo root so workspace packages (e.g. @mint/db) are resolved
+        run: npm ci
+
+      - name: TypeScript type-check
+        run: npm run typecheck
+        working-directory: apps/web
+
+      - name: ESLint
+        run: npm run lint
+        working-directory: apps/web
+
+      - name: Prisma schema validation
+        run: npx prisma validate
+        working-directory: apps/web
+
+      # ── Python ──
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/worker/requirements.txt
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+        working-directory: apps/worker
+
+      - name: Python tests
+        run: pytest tests/ -v
+        working-directory: apps/worker
+
+      # ── Cross-tenant RLS isolation test (Story 1.2) ──
+      # Applies all migrations to the CI postgres DB, then runs the
+      # cross-tenant RLS isolation test to verify tenant data cannot leak.
+      # This test MUST pass on every PR — it catches RLS policy regressions.
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/web
+
+      - name: Apply Prisma migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Cross-tenant RLS isolation test
+        run: npm run test:rls
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Auth integration test
+        run: npm run test:auth
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Password reset integration test
+        run: npm run test:reset
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Account deletion integration test
+        run: npm run test:account
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Statement upload integration test
+        run: npm run test:upload
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
