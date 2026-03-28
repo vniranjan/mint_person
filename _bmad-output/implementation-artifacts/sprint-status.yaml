@@ -1,5 +1,5 @@
 # generated: 2026-03-22
-# last_updated: 2026-03-27 # post-review fixes applied
+# last_updated: 2026-03-27 # sprint planning refresh — Epic 1 & 2 marked done
 # project: mint_personal
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-22
-last_updated: 2026-03-27 # post-review fixes applied
+last_updated: 2026-03-27
 project: mint_personal
 project_key: NOKEY
 tracking_system: file-system
@@ -47,32 +47,32 @@ development_status:
   # Epic 1: Foundation, Infrastructure & Authentication
   # Users can register, log in, and access a securely isolated multi-tenant platform
   # ─────────────────────────────────────────────
-  epic-1: in-progress
+  epic-1: done
   1-1-project-scaffold-and-design-foundation: done
   1-2-database-schema-and-multi-tenant-isolation: done
-  1-3-user-registration-and-login: review
-  1-4-password-reset-via-email: review
-  1-5-account-deletion-and-full-data-purge: review
-  1-6-azure-production-deployment-and-cicd: review
+  1-3-user-registration-and-login: done
+  1-4-password-reset-via-email: done
+  1-5-account-deletion-and-full-data-purge: done
+  1-6-azure-production-deployment-and-cicd: done
   epic-1-retrospective: optional
 
   # ─────────────────────────────────────────────
   # Epic 2: CSV Statement Upload & Parsing Pipeline
   # Users can upload CSV statements and receive fully parsed transactions within 30 seconds
   # ─────────────────────────────────────────────
-  epic-2: in-progress
-  2-1-csv-upload-api-and-azure-blob-queue-integration: review
-  2-2-python-worker-bank-csv-parsers: review
-  2-3-job-progress-polling-and-upload-pipeline-ui: review
-  2-4-duplicate-transaction-detection: review
-  2-5-statement-history-and-upload-drop-zone: review
+  epic-2: done
+  2-1-csv-upload-api-and-azure-blob-queue-integration: done
+  2-2-python-worker-bank-csv-parsers: done
+  2-3-job-progress-polling-and-upload-pipeline-ui: done
+  2-4-duplicate-transaction-detection: done
+  2-5-statement-history-and-upload-drop-zone: done
   epic-2-retrospective: optional
 
   # ─────────────────────────────────────────────
   # Epic 3: AI Categorization, Review & Correction Learning
   # Transactions are automatically categorized by an AI that learns from user corrections
   # ─────────────────────────────────────────────
-  epic-3: backlog
+  epic-3: backlog  # next up
   3-1-litellm-categorizer-confidence-scoring-and-low-confidence-flagging: backlog
   3-2-default-category-taxonomy-and-flagged-transaction-review-queue: backlog
   3-3-one-click-category-correction: backlog
