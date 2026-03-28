@@ -5,22 +5,27 @@ import Link from "next/link";
 import UploadDropZone from "~/components/upload-drop-zone";
 import UploadPipeline from "~/components/upload-pipeline";
 
+interface DashboardClientProps {
+  /** Whether the user has any prior uploaded statements (from server-side query). */
+  hasStatements: boolean;
+}
+
 /**
  * Dashboard interactive shell.
  *
  * States:
- * - No active job: full-page centered UploadDropZone (new user empty state)
+ * - No prior statements and no active job → full-page centered UploadDropZone
  * - Active job: UploadPipeline with progress
  * - COMPLETE: success message with link to statements page
  * - FAILED: error shown inside UploadPipeline + option to retry
  *
  * Full KPI strip, spending chart, transaction table → Epic 4.
  */
-export default function DashboardClient() {
+export default function DashboardClient({ hasStatements }: DashboardClientProps) {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [finishedStage, setFinishedStage] = useState<"COMPLETE" | "FAILED" | null>(null);
 
-  function handleUploadStart(jobId: string) {
+  function handleUploadComplete(jobId: string) {
     setActiveJobId(jobId);
     setFinishedStage(null);
   }
@@ -39,7 +44,9 @@ export default function DashboardClient() {
       <div>
         <h1 className="text-xl font-semibold text-stone-900">Dashboard</h1>
         <p className="mt-1 text-sm text-stone-500">
-          Upload a bank statement to get started.
+          {hasStatements
+            ? "Your spending overview."
+            : "Upload a bank statement to get started."}
         </p>
       </div>
 
@@ -76,7 +83,10 @@ export default function DashboardClient() {
         )}
 
         {!activeJobId && (
-          <UploadDropZone onUploadStart={handleUploadStart} />
+          <UploadDropZone
+            onUploadComplete={handleUploadComplete}
+            compact={hasStatements}
+          />
         )}
       </div>
 

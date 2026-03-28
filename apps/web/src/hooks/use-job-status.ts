@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface JobStatusData {
@@ -15,7 +16,7 @@ export interface JobStatusData {
 export function useJobStatus(jobId: string | null) {
   const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["job-status", jobId],
     queryFn: async (): Promise<{ data: JobStatusData }> => {
       const res = await fetch(`/api/jobs/${jobId}/status`);
@@ -27,14 +28,19 @@ export function useJobStatus(jobId: string | null) {
     enabled: !!jobId,
     refetchInterval: (query) => {
       const stage = query.state.data?.data?.stage;
-      if (stage === "COMPLETE") {
-        void queryClient.invalidateQueries({ queryKey: ["statements"] });
-        return false;
-      }
-      if (stage === "FAILED") {
-        return false;
-      }
+      if (stage === "COMPLETE" || stage === "FAILED") return false;
       return 2000;
     },
   });
+
+  // Invalidate statements cache in a useEffect — not inside refetchInterval —
+  // to avoid calling side effects from a pure interval-calculation callback.
+  const stage = query.data?.data?.stage;
+  useEffect(() => {
+    if (stage === "COMPLETE") {
+      void queryClient.invalidateQueries({ queryKey: ["statements"] });
+    }
+  }, [stage, queryClient]);
+
+  return query;
 }

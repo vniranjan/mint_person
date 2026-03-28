@@ -39,28 +39,28 @@ class WellsFargoParser(BaseStatementParser):
         - Column 1 looks like a number
         """
         try:
-            df = pd.read_csv(io.StringIO(csv_content), header=None, nrows=3)
+            df = pd.read_csv(io.StringIO(csv_content), header=None, nrows=3, dtype=str)
             if df.shape[1] < 5:
                 return False
             # Check asterisk columns
             if not all(str(v).strip() in ("*", "") for v in df.iloc[:, 2]):
                 return False
-            # Check date column
-            pd.to_datetime(str(df.iloc[0, 0]))
+            # Check date column (MM/DD/YYYY)
+            pd.to_datetime(str(df.iloc[0, 0]).strip(), format="%m/%d/%Y")
             # Check amount column
-            float(str(df.iloc[0, 1]).replace(",", ""))
+            float(str(df.iloc[0, 1]).replace(",", "").strip())
             return True
         except Exception:
             return False
 
     def parse(self, csv_content: str) -> list[ParsedTransaction]:
-        df = pd.read_csv(io.StringIO(csv_content), header=None)
+        df = pd.read_csv(io.StringIO(csv_content), header=None, dtype=str)
 
         transactions: list[ParsedTransaction] = []
         for _, row in df.iterrows():
             try:
-                date = pd.to_datetime(str(row.iloc[0])).date()
-                amount_raw = str(row.iloc[1]).replace(",", "")
+                date = pd.to_datetime(str(row.iloc[0]).strip(), format="%m/%d/%Y").date()
+                amount_raw = str(row.iloc[1]).replace(",", "").strip()
                 merchant_raw = str(row.iloc[4]).strip()
 
                 # Wells Fargo: negative = expense. Flip sign.

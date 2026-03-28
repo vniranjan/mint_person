@@ -31,26 +31,26 @@ class CapitalOneParser(BaseStatementParser):
 
     def can_parse(self, csv_content: str) -> bool:
         try:
-            df = pd.read_csv(io.StringIO(csv_content), nrows=0)
+            df = pd.read_csv(io.StringIO(csv_content), nrows=0, dtype=str)
             return self.REQUIRED_HEADERS.issubset(set(df.columns))
         except Exception:
             return False
 
     def parse(self, csv_content: str) -> list[ParsedTransaction]:
-        df = pd.read_csv(io.StringIO(csv_content))
+        df = pd.read_csv(io.StringIO(csv_content), dtype=str)
         df.columns = df.columns.str.strip()
 
         transactions: list[ParsedTransaction] = []
         for _, row in df.iterrows():
             try:
-                date = pd.to_datetime(str(row["Transaction Date"])).date()
+                date = pd.to_datetime(str(row["Transaction Date"]), format="%Y-%m-%d").date()
                 merchant_raw = str(row["Description"]).strip()
 
                 debit_raw = str(row.get("Debit", "")).strip()
                 credit_raw = str(row.get("Credit", "")).strip()
 
-                debit = Decimal(debit_raw.replace(",", "")) if debit_raw and debit_raw != "nan" else Decimal("0")
-                credit = Decimal(credit_raw.replace(",", "")) if credit_raw and credit_raw != "nan" else Decimal("0")
+                debit = Decimal(debit_raw.replace(",", "")) if debit_raw and debit_raw not in ("nan", "") else Decimal("0")
+                credit = Decimal(credit_raw.replace(",", "")) if credit_raw and credit_raw not in ("nan", "") else Decimal("0")
 
                 # Net expense: positive = expense, negative = credit/refund
                 amount = debit - credit

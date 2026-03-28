@@ -16,8 +16,13 @@ interface StatementRow {
   id: string;
   filename: string;
   institution: string | null;
-  uploadedAt: string;
+  uploadedAt: string | Date;
   jobStatus: JobStatus | null;
+}
+
+interface StatementsClientProps {
+  /** Server-fetched statements for SSR hydration — avoids loading flash. */
+  initialStatements: StatementRow[];
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -46,21 +51,24 @@ async function fetchStatements(): Promise<{ data: StatementRow[] }> {
  *
  * - Empty state: full-page UploadDropZone
  * - Returning user: compact upload at top + table of past statements
+ *
+ * Hydrated with server-fetched initialStatements to prevent loading flash.
  */
-export default function StatementsClient() {
+export default function StatementsClient({ initialStatements }: StatementsClientProps) {
   const queryClient = useQueryClient();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [finishedStage, setFinishedStage] = useState<"COMPLETE" | "FAILED" | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ["statements"],
     queryFn: fetchStatements,
+    initialData: { data: initialStatements },
   });
 
   const statements = data?.data ?? [];
   const hasStatements = statements.length > 0;
 
-  function handleUploadStart(jobId: string) {
+  function handleUploadComplete(jobId: string) {
     setActiveJobId(jobId);
     setFinishedStage(null);
   }
@@ -75,15 +83,6 @@ export default function StatementsClient() {
   function handleRetry() {
     setActiveJobId(null);
     setFinishedStage(null);
-  }
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-xl font-semibold text-stone-900">Statements</h1>
-        <p className="text-sm text-stone-400">Loading…</p>
-      </div>
-    );
   }
 
   if (isError) {
@@ -105,7 +104,7 @@ export default function StatementsClient() {
             No statements yet. Upload your first bank statement to get started.
           </p>
         </div>
-        <UploadDropZone onUploadStart={handleUploadStart} />
+        <UploadDropZone onUploadComplete={handleUploadComplete} />
       </div>
     );
   }
@@ -152,7 +151,7 @@ export default function StatementsClient() {
 
       {/* Compact upload zone for returning users */}
       {!activeJobId && (
-        <UploadDropZone onUploadStart={handleUploadStart} compact />
+        <UploadDropZone onUploadComplete={handleUploadComplete} compact />
       )}
 
       {/* Statements table */}

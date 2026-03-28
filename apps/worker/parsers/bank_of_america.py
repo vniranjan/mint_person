@@ -49,15 +49,15 @@ class BankOfAmericaParser(BaseStatementParser):
 
     def parse(self, csv_content: str) -> list[ParsedTransaction]:
         skip_rows = self._find_header_row(csv_content)
-        df = pd.read_csv(io.StringIO(csv_content), skiprows=skip_rows)
+        df = pd.read_csv(io.StringIO(csv_content), skiprows=skip_rows, dtype=str)
         df.columns = df.columns.str.strip()
 
         transactions: list[ParsedTransaction] = []
         for _, row in df.iterrows():
             try:
-                date = pd.to_datetime(str(row["Posted Date"])).date()
+                date = pd.to_datetime(str(row["Posted Date"]), format="%m/%d/%Y").date()
                 merchant_raw = str(row["Payee"]).strip()
-                amount_raw = str(row["Amount"]).replace(",", "")
+                amount_raw = str(row["Amount"]).replace(",", "").strip()
                 # BofA: negative = expense. Flip sign so expenses are positive.
                 amount = -Decimal(amount_raw)
                 transactions.append(ParsedTransaction(

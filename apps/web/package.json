@@ -17,7 +17,8 @@
     "test:auth": "vitest run src/__tests__/auth-register.test.ts",
     "test:reset": "vitest run src/__tests__/auth-reset.test.ts",
     "test:account": "vitest run src/__tests__/account-delete.test.ts",
-    "test:upload": "vitest run src/__tests__/statements-upload.test.ts"
+    "test:upload": "vitest run src/__tests__/statements-upload.test.ts",
+    "test:jobs": "vitest run src/__tests__/job-status.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",

@@ -7,7 +7,6 @@ Supported banks: Chase, Amex, Bank of America, Capital One, Wells Fargo
 Detection order matters: more specific parsers (Capital One) before more general ones.
 """
 import logging
-from typing import Optional
 
 from parsers.base import BaseStatementParser
 from parsers.chase import ChaseParser
@@ -29,17 +28,15 @@ PARSER_REGISTRY: list[BaseStatementParser] = [
 ]
 
 
-def get_parser(csv_content: str) -> Optional[BaseStatementParser]:
+def get_parser(csv_content: str) -> BaseStatementParser:
     """
     Auto-detect bank format and return the matching parser.
 
-    Returns None if no parser can handle the format.
-    In that case the job will be marked FAILED by the worker.
+    Raises ValueError if no parser can handle the format.
     """
     for parser in PARSER_REGISTRY:
         if parser.can_parse(csv_content):
             logger.info("Detected bank format: %s", parser.bank_name)
             return parser
 
-    logger.warning("No parser found for CSV content — unknown bank format")
-    return None
+    raise ValueError("Unsupported CSV format — no matching parser found")

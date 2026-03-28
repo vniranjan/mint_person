@@ -34,6 +34,7 @@ from azure.storage.queue import QueueServiceClient
 from categorizer import categorize_transactions
 from config import settings
 from database import get_session
+from dedup import is_duplicate_transaction
 from job_status import update_job_stage
 from models import Transaction
 from parsers.registry import get_parser
@@ -45,7 +46,9 @@ logger = logging.getLogger(__name__)
 # Patterns stripped from raw merchant names (applied in order)
 _TRAILING_ID_RE = re.compile(r"\s+#[\w-]+$", re.IGNORECASE)
 _TRAILING_DIGITS_RE = re.compile(r"\s+\d{3,}$")
-_ASTERISK_RE = re.compile(r"\*.*$")
+# Target known payment processor prefixes only (SQ*, TST*, etc.)
+# instead of a blanket asterisk strip that destroys meaningful names.
+_PAYMENT_PREFIX_RE = re.compile(r"^(SQ\s*\*|TST\*|SP\s*\*|PP\s*\*)\s*", re.IGNORECASE)
 _MULTI_SPACE_RE = re.compile(r"\s{2,}")
 _CITY_STATE_RE = re.compile(r"\s+[A-Z]{2,}\s+[A-Z]{2}$")  # " AUSTIN TX"
 
@@ -58,7 +61,7 @@ def normalize_merchant(raw: str) -> str:
     1. Strip surrounding whitespace
     2. Remove trailing city/state suffix
     3. Remove trailing #ID or long digit sequences
-    4. Remove everything after an asterisk (e.g. "AMAZON*AB12C3")
+    4. Strip known payment processor prefixes (SQ*, TST*, SP*, PP*)
     5. Collapse multiple spaces
     6. Title-case the result
     """
@@ -66,7 +69,7 @@ def normalize_merchant(raw: str) -> str:
     name = _CITY_STATE_RE.sub("", name)
     name = _TRAILING_ID_RE.sub("", name)
     name = _TRAILING_DIGITS_RE.sub("", name)
-    name = _ASTERISK_RE.sub("", name)
+    name = _PAYMENT_PREFIX_RE.sub("", name)
     name = _MULTI_SPACE_RE.sub(" ", name).strip()
     return name.title() if name else raw.strip().title()
 
@@ -79,10 +82,9 @@ def _get_blob_client():
     )
 
 
-def _download_blob(blob_url: str) -> str:
-    """Download blob content as a UTF-8 string."""
+def _download_blob_sync(blob_url: str) -> str:
+    """Download blob content as a string (synchronous — wrapped in to_thread by caller)."""
     blob_client = _get_blob_client()
-    # Parse container and blob name from URL
     # URL format: http(s)://{account}/{container}/{blob_path}
     parts = blob_url.split(f"/{settings.azure_blob_container_name}/", 1)
     if len(parts) != 2:
@@ -90,11 +92,12 @@ def _download_blob(blob_url: str) -> str:
     blob_name = parts[1]
     container = blob_client.get_container_client(settings.azure_blob_container_name)
     download = container.get_blob_client(blob_name).download_blob()
-    return download.readall().decode("utf-8", errors="replace")
+    # utf-8-sig transparently strips BOM (common in Windows bank CSV exports)
+    return download.readall().decode("utf-8-sig")
 
 
-def _delete_blob(blob_url: str) -> None:
-    """Delete blob after successful parse (FR28 — raw files deleted after parsing)."""
+def _delete_blob_sync(blob_url: str) -> None:
+    """Delete blob (synchronous — wrapped in to_thread by caller)."""
     try:
         parts = blob_url.split(f"/{settings.azure_blob_container_name}/", 1)
         if len(parts) != 2:
@@ -107,23 +110,14 @@ def _delete_blob(blob_url: str) -> None:
         logger.error("Failed to delete blob %s: %s", blob_url, e)
 
 
-# ── Duplicate detection ────────────────────────────────────────────────────
+async def _download_blob(blob_url: str) -> str:
+    """Download blob content, offloading blocking I/O to a thread."""
+    return await asyncio.to_thread(_download_blob_sync, blob_url)
 
-def _is_duplicate(db, user_id: str, txn_date: datetime, amount: Decimal, merchant_raw: str) -> bool:
-    """
-    Return True if an identical transaction already exists for this user.
-    Duplicate = same userId + same calendar day + same amount + same merchantRaw.
-    """
-    day_start = txn_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    day_end = day_start + timedelta(days=1)
-    existing = db.query(Transaction).filter(
-        Transaction.user_id == user_id,
-        Transaction.date >= day_start,
-        Transaction.date < day_end,
-        Transaction.amount == amount,
-        Transaction.merchant_raw == merchant_raw,
-    ).first()
-    return existing is not None
+
+async def _delete_blob(blob_url: str) -> None:
+    """Delete blob, offloading blocking I/O to a thread."""
+    await asyncio.to_thread(_delete_blob_sync, blob_url)
 
 
 # ── Core job processor ────────────────────────────────────────────────────
@@ -156,13 +150,12 @@ async def process_statement_job(message: dict) -> None:
             update_job_stage(db, job_id, "UPLOADING")
             db.commit()
 
-            csv_content = _download_blob(blob_url)
+            csv_content = await _download_blob(blob_url)
             blob_downloaded = True
 
             # ── Stage: READING ────────────────────────────────────────────
+            # get_parser raises ValueError if format is unrecognized
             parser = get_parser(csv_content)
-            if parser is None:
-                raise ValueError("Unrecognized bank CSV format — no parser matched")
 
             logger.info("Job %s: using %s parser", job_id_str, parser.bank_name)
             parsed = parser.parse(csv_content)
@@ -189,6 +182,10 @@ async def process_statement_job(message: dict) -> None:
                 txn_date = datetime.combine(t.date, datetime.min.time())
                 cat_info = cat_by_id.get(txn_dicts[i]["id"], {})
 
+                # Store None in DB when category is Uncategorized (AC3 spec)
+                category_raw = cat_info.get("category")
+                category = None if not category_raw or category_raw == "Uncategorized" else category_raw
+
                 txn = Transaction(
                     id=uuid.uuid4(),
                     user_id=user_id,
@@ -197,11 +194,12 @@ async def process_statement_job(message: dict) -> None:
                     merchant_raw=t.merchant_raw,
                     merchant_norm=normalize_merchant(t.merchant_raw),
                     amount=t.amount,
-                    category=cat_info.get("category"),
+                    category=category,
                     confidence=cat_info.get("confidence"),
-                    is_duplicate=_is_duplicate(db, user_id, txn_date, t.amount, t.merchant_raw),
+                    is_duplicate=is_duplicate_transaction(db, user_id, t.date, t.amount, t.merchant_raw),
                 )
                 db.add(txn)
+                db.flush()  # Make row visible to subsequent _is_duplicate queries (intra-batch)
                 written += 1
 
             # ── Stage: COMPLETE ───────────────────────────────────────────
@@ -221,7 +219,7 @@ async def process_statement_job(message: dict) -> None:
         finally:
             # Always delete the blob (FR28) if it was downloaded, regardless of success/failure.
             if blob_downloaded and blob_url:
-                _delete_blob(blob_url)
+                await _delete_blob(blob_url)
 
 
 # ── Queue polling loop ─────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "~/components/ui/progress";
 import { useJobStatus } from "~/hooks/use-job-status";
@@ -41,10 +42,13 @@ export default function UploadPipeline({ jobId, onFinished }: UploadPipelineProp
   const errorMessage = data?.data?.errorMessage;
   const isDone = stage === "COMPLETE" || stage === "FAILED";
 
-  // Notify parent when finished
-  if (isDone && onFinished) {
-    onFinished(stage as "COMPLETE" | "FAILED");
-  }
+  // Notify parent when finished — must be in useEffect, not render body,
+  // to avoid calling setState during render (React rules violation).
+  useEffect(() => {
+    if (isDone && onFinished) {
+      onFinished(stage as "COMPLETE" | "FAILED");
+    }
+  }, [isDone, stage, onFinished]);
 
   function getLabel(): string {
     if (stage === "READING" && count > 0) return `Reading transactions… ${count} found`;

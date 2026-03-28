@@ -131,3 +131,9 @@ jobs:
         working-directory: apps/web
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Job status integration test
+        run: npm run test:jobs
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}

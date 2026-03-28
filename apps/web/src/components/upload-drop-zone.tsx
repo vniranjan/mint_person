@@ -5,13 +5,15 @@ import { Loader2, Upload } from "lucide-react";
 import { cn } from "~/lib/utils";
 
 interface UploadDropZoneProps {
-  /** Called with the jobId after a successful upload */
-  onUploadStart: (jobId: string, statementId: string) => void;
+  /** Called with the jobId after a successful upload completes */
+  onUploadComplete: (jobId: string) => void;
   /** Compact inline variant for returning users (default: false = full-page) */
   compact?: boolean;
 }
 
 type DropState = "idle" | "hover" | "drag-over" | "uploading";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 /**
  * CSV statement upload drop zone.
@@ -26,12 +28,14 @@ type DropState = "idle" | "hover" | "drag-over" | "uploading";
  * Screen reader: role="button", aria-label.
  */
 export default function UploadDropZone({
-  onUploadStart,
+  onUploadComplete,
   compact = false,
 }: UploadDropZoneProps) {
   const [dropState, setDropState] = useState<DropState>("idle");
   const [error, setError] = useState<string | undefined>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isUploading = dropState === "uploading";
 
   function openFilePicker() {
     fileInputRef.current?.click();
@@ -46,12 +50,12 @@ export default function UploadDropZone({
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
-    setDropState("drag-over");
+    if (!isUploading) setDropState("drag-over");
   }
 
   function handleDragLeave(e: React.DragEvent) {
     e.preventDefault();
-    setDropState("idle");
+    if (!isUploading) setDropState("idle");
   }
 
   function handleMouseEnter() {
@@ -63,6 +67,20 @@ export default function UploadDropZone({
   }
 
   async function uploadFile(file: File) {
+    // Client-side validation before round-trip (Finding #8)
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setError("Only CSV files are supported.");
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError("File exceeds the 10 MB limit.");
+      return;
+    }
+    if (file.size === 0) {
+      setError("File is empty.");
+      return;
+    }
+
     setError(undefined);
     setDropState("uploading");
 
@@ -87,7 +105,7 @@ export default function UploadDropZone({
       }
 
       if (body.data) {
-        onUploadStart(body.data.jobId, body.data.statementId);
+        onUploadComplete(body.data.jobId);
       }
     } catch {
       setError("Unable to connect. Please try again.");
@@ -97,6 +115,8 @@ export default function UploadDropZone({
 
   async function handleDrop(e: React.DragEvent) {
     e.preventDefault();
+    // Guard against concurrent uploads (Finding #7)
+    if (isUploading) return;
     const file = e.dataTransfer.files[0];
     if (!file) return;
     await uploadFile(file);
@@ -109,8 +129,6 @@ export default function UploadDropZone({
     e.target.value = "";
     await uploadFile(file);
   }
-
-  const isUploading = dropState === "uploading";
 
   return (
     <div className={cn("flex flex-col items-center", compact ? "gap-2" : "gap-4")}>

@@ -30,7 +30,7 @@ class AmexParser(BaseStatementParser):
 
     def can_parse(self, csv_content: str) -> bool:
         try:
-            df = pd.read_csv(io.StringIO(csv_content), nrows=0)
+            df = pd.read_csv(io.StringIO(csv_content), nrows=0, dtype=str)
             headers = set(df.columns)
             # Must have Amex-specific fields; distinguish from other banks
             return (
@@ -42,15 +42,15 @@ class AmexParser(BaseStatementParser):
             return False
 
     def parse(self, csv_content: str) -> list[ParsedTransaction]:
-        df = pd.read_csv(io.StringIO(csv_content))
+        df = pd.read_csv(io.StringIO(csv_content), dtype=str)
         df.columns = df.columns.str.strip()
 
         transactions: list[ParsedTransaction] = []
         for _, row in df.iterrows():
             try:
-                date = pd.to_datetime(str(row["Date"])).date()
+                date = pd.to_datetime(str(row["Date"]), format="%m/%d/%Y").date()
                 merchant_raw = str(row["Description"]).strip()
-                amount_raw = str(row["Amount"]).replace(",", "")
+                amount_raw = str(row["Amount"]).replace(",", "").strip()
                 # Amex: negative = expense. Flip sign so expenses are positive.
                 amount = -Decimal(amount_raw)
                 transactions.append(ParsedTransaction(
