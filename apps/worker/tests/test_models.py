@@ -91,11 +91,10 @@ class TestTransactionModel:
         col_names = [c.name for c in Transaction.__table__.c]
         assert "isReviewed" in col_names
 
-    def test_no_is_flagged_column(self) -> None:
-        # isFlagged is NOT in the architecture schema — implicit from confidence threshold
+    def test_is_flagged_column(self) -> None:
+        # isFlagged added in Story 3.1 — set True when confidence < threshold
         col_names = [c.name for c in Transaction.__table__.c]
-        assert "isFlagged" not in col_names
-        assert "is_flagged" not in col_names
+        assert "isFlagged" in col_names
 
 
 class TestCorrectionLogModel:

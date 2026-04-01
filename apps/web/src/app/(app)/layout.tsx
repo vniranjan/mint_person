@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { SessionProvider } from "next-auth/react";
 import { auth, signOut } from "~/lib/auth";
+import QueryProvider from "~/components/query-provider";
+import { Toaster } from "~/components/toaster";
 
 export default async function AppLayout({
   children,
@@ -12,6 +14,7 @@ export default async function AppLayout({
   if (!session) redirect("/login");
 
   return (
+    <QueryProvider>
     <SessionProvider session={session}>
       <div className="min-h-screen bg-stone-50">
         <header className="border-b border-stone-200 bg-white">
@@ -49,7 +52,9 @@ export default async function AppLayout({
         <main id="main-content" className="mx-auto max-w-7xl px-4 py-6">
           {children}
         </main>
+        <Toaster />
       </div>
     </SessionProvider>
+    </QueryProvider>
   );
 }

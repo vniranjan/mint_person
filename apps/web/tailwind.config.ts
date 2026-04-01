@@ -4,6 +4,12 @@ import { fontFamily } from "tailwindcss/defaultTheme";
 export default {
   darkMode: ["class"],
   content: ["./src/**/*.tsx", "./src/**/*.ts"],
+  safelist: [
+    // Category badge tokens — safelist ensures they survive JIT purge
+    // even when class strings are read from a data object at runtime.
+    { pattern: /^bg-category-/ },
+    { pattern: /^text-category-/ },
+  ],
   theme: {
     extend: {
       fontFamily: {

@@ -130,7 +130,9 @@ model Transaction {
   amount       Decimal   @db.Decimal(12, 2)
   category     String?   // null until categorized
   confidence   Float?    // null until categorized; < 0.70 triggers review queue
-  isDuplicate  Boolean   @default(false)
+  isFlagged          Boolean   @default(false)  // confidence < 0.70 → surfaces in review queue
+  patternAppliedNote String?   // "Also applied to N similar merchants" (Story 3.4)
+  isDuplicate        Boolean   @default(false)
   isExcluded   Boolean   @default(false)
   isReviewed   Boolean   @default(false)
   createdAt    DateTime  @default(now())

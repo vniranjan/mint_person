@@ -102,6 +102,8 @@ class Transaction(Base):
     amount = Column(Numeric(12, 2), nullable=False)
     category = Column(String)           # null until LLM categorization runs
     confidence = Column(Float)          # null until LLM runs; < 0.70 → review queue
+    is_flagged = Column(Boolean, nullable=False, server_default="false", name="isFlagged")
+    pattern_applied_note = Column(String, nullable=True, name="patternAppliedNote")
     is_duplicate = Column(Boolean, nullable=False, server_default="false", name="isDuplicate")
     is_excluded = Column(Boolean, nullable=False, server_default="false", name="isExcluded")
     is_reviewed = Column(Boolean, nullable=False, server_default="false", name="isReviewed")

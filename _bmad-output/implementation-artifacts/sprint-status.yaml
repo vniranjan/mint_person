@@ -1,5 +1,5 @@
 # generated: 2026-03-22
-# last_updated: 2026-03-27 # sprint planning refresh — Epic 1 & 2 marked done
+# last_updated: 2026-03-30 # sprint planning refresh — Epic 1 & 2 marked done
 # project: mint_personal
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-22
-last_updated: 2026-03-27
+last_updated: 2026-03-30
 project: mint_personal
 project_key: NOKEY
 tracking_system: file-system
@@ -72,12 +72,12 @@ development_status:
   # Epic 3: AI Categorization, Review & Correction Learning
   # Transactions are automatically categorized by an AI that learns from user corrections
   # ─────────────────────────────────────────────
-  epic-3: backlog  # next up
-  3-1-litellm-categorizer-confidence-scoring-and-low-confidence-flagging: backlog
-  3-2-default-category-taxonomy-and-flagged-transaction-review-queue: backlog
-  3-3-one-click-category-correction: backlog
-  3-4-pattern-learning-within-upload-and-cross-upload-correction-memory: backlog
-  3-5-transaction-exclusion-from-monthly-totals: backlog
+  epic-3: in-progress
+  3-1-litellm-categorizer-confidence-scoring-and-low-confidence-flagging: review
+  3-2-default-category-taxonomy-and-flagged-transaction-review-queue: review
+  3-3-one-click-category-correction: review
+  3-4-pattern-learning-within-upload-and-cross-upload-correction-memory: review
+  3-5-transaction-exclusion-from-monthly-totals: review
   epic-3-retrospective: optional
 
   # ─────────────────────────────────────────────

@@ -23,7 +23,6 @@ import asyncio
 import base64
 import json
 import logging
-import re
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -31,47 +30,34 @@ from decimal import Decimal
 from azure.storage.blob import BlobServiceClient
 from azure.storage.queue import QueueServiceClient
 
-from categorizer import categorize_transactions
+from categorizer import categorize_transactions, normalize_merchant
 from config import settings
 from database import get_session
 from dedup import is_duplicate_transaction
 from job_status import update_job_stage
-from models import Transaction
+from models import CorrectionLog, Transaction
 from parsers.registry import get_parser
 
 logger = logging.getLogger(__name__)
 
-# ── Merchant name normalization ────────────────────────────────────────────
 
-# Patterns stripped from raw merchant names (applied in order)
-_TRAILING_ID_RE = re.compile(r"\s+#[\w-]+$", re.IGNORECASE)
-_TRAILING_DIGITS_RE = re.compile(r"\s+\d{3,}$")
-# Target known payment processor prefixes only (SQ*, TST*, etc.)
-# instead of a blanket asterisk strip that destroys meaningful names.
-_PAYMENT_PREFIX_RE = re.compile(r"^(SQ\s*\*|TST\*|SP\s*\*|PP\s*\*)\s*", re.IGNORECASE)
-_MULTI_SPACE_RE = re.compile(r"\s{2,}")
-_CITY_STATE_RE = re.compile(r"\s+[A-Z]{2,}\s+[A-Z]{2}$")  # " AUSTIN TX"
+# Common non-discriminative words that should not be used as prefixes
+_PREFIX_STOPWORDS = frozenset({"the", "a", "an", "la", "le", "les"})
 
 
-def normalize_merchant(raw: str) -> str:
+def _merchant_prefix(name: str) -> str:
     """
-    Normalize a raw merchant string for consistent matching and display.
-
-    Steps:
-    1. Strip surrounding whitespace
-    2. Remove trailing city/state suffix
-    3. Remove trailing #ID or long digit sequences
-    4. Strip known payment processor prefixes (SQ*, TST*, SP*, PP*)
-    5. Collapse multiple spaces
-    6. Title-case the result
+    Return the first meaningful word as a matching prefix for within-upload
+    pattern application (Story 3.4 AC2).
+    - Min 3 chars to avoid false matches (e.g. "BP")
+    - Stopwords filtered to avoid cross-matching unrelated merchants (e.g. "THE ...")
     """
-    name = raw.strip()
-    name = _CITY_STATE_RE.sub("", name)
-    name = _TRAILING_ID_RE.sub("", name)
-    name = _TRAILING_DIGITS_RE.sub("", name)
-    name = _PAYMENT_PREFIX_RE.sub("", name)
-    name = _MULTI_SPACE_RE.sub(" ", name).strip()
-    return name.title() if name else raw.strip().title()
+    parts = name.strip().split()
+    if parts:
+        first = parts[0].lower()
+        if len(first) >= 3 and first not in _PREFIX_STOPWORDS:
+            return first
+    return ""
 
 
 # ── Blob helpers ───────────────────────────────────────────────────────────
@@ -169,12 +155,37 @@ async def process_statement_job(message: dict) -> None:
             update_job_stage(db, job_id, "CATEGORIZING", transaction_count=len(parsed))
             db.commit()
 
-            # Call categorizer stub (Epic 3 will replace with real LLM)
-            txn_dicts = [{"id": str(uuid.uuid4()), "merchant_raw": t.merchant_raw, "amount": str(t.amount)} for t in parsed]
-            categorized = await categorize_transactions(txn_dicts, user_correction_log=[])
+            # Load user's correction log for few-shot examples + pre-matching (Story 3.4)
+            corrections = db.query(CorrectionLog).filter(
+                CorrectionLog.user_id == user_id
+            ).all()
+            user_correction_log = [
+                {"merchant_raw": c.merchant_pattern, "corrected_category": c.corrected_category}
+                for c in corrections
+            ]
 
-            # Map categorization results by index
+            # Categorize with LiteLLM (falls back to rule-based on LLM errors)
+            txn_dicts = [{"id": str(uuid.uuid4()), "merchant_raw": t.merchant_raw, "amount": str(t.amount)} for t in parsed]
+            categorized = await categorize_transactions(txn_dicts, user_correction_log=user_correction_log)
+
+            # Map categorization results by temp id
             cat_by_id = {c["id"]: c for c in categorized}
+
+            # ── Apply within-upload pattern matching (Story 3.4 AC2) ──────
+            # Build prefix→category map from correction log
+            prefix_map: dict[str, str] = {}
+            for entry in user_correction_log:
+                prefix = _merchant_prefix(normalize_merchant(entry["merchant_raw"]))
+                if prefix:
+                    prefix_map[prefix] = entry["corrected_category"]
+
+            # Count how many transactions per prefix will be auto-corrected
+            prefix_counts: dict[str, int] = {}
+            if prefix_map:
+                for t in parsed:
+                    prefix = _merchant_prefix(normalize_merchant(t.merchant_raw))
+                    if prefix in prefix_map:
+                        prefix_counts[prefix] = prefix_counts.get(prefix, 0) + 1
 
             # ── Write transactions to DB ──────────────────────────────────
             written = 0
@@ -185,6 +196,21 @@ async def process_statement_job(message: dict) -> None:
                 # Store None in DB when category is Uncategorized (AC3 spec)
                 category_raw = cat_info.get("category")
                 category = None if not category_raw or category_raw == "Uncategorized" else category_raw
+                confidence = cat_info.get("confidence")
+                is_flagged = cat_info.get("is_flagged", False)
+
+                # Within-upload pattern override (Story 3.4)
+                # Only applies when LLM confidence is < 0.95 (don't override high-confidence results)
+                merchant_norm = normalize_merchant(t.merchant_raw)
+                prefix = _merchant_prefix(merchant_norm)
+                pattern_note: str | None = None
+                if prefix and prefix in prefix_map and (confidence is None or confidence < 0.95):
+                    category = prefix_map[prefix]
+                    confidence = 0.95
+                    is_flagged = False
+                    n = prefix_counts.get(prefix, 1)
+                    if n > 1:
+                        pattern_note = f"Also applied to {n - 1} similar merchant{'s' if n - 1 > 1 else ''}"
 
                 txn = Transaction(
                     id=uuid.uuid4(),
@@ -192,10 +218,12 @@ async def process_statement_job(message: dict) -> None:
                     statement_id=statement_id,
                     date=txn_date,
                     merchant_raw=t.merchant_raw,
-                    merchant_norm=normalize_merchant(t.merchant_raw),
+                    merchant_norm=merchant_norm,
                     amount=t.amount,
                     category=category,
-                    confidence=cat_info.get("confidence"),
+                    confidence=confidence,
+                    is_flagged=is_flagged,
+                    pattern_applied_note=pattern_note,
                     is_duplicate=is_duplicate_transaction(db, user_id, t.date, t.amount, t.merchant_raw),
                 )
                 db.add(txn)
