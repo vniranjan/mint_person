@@ -1,5 +1,5 @@
 # generated: 2026-03-22
-# last_updated: 2026-03-30 # sprint planning refresh — Epic 1 & 2 marked done
+# last_updated: 2026-04-03 # Epic 4 implemented — all stories done
 # project: mint_personal
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-22
-last_updated: 2026-03-30
+last_updated: 2026-04-03
 project: mint_personal
 project_key: NOKEY
 tracking_system: file-system
@@ -72,24 +72,24 @@ development_status:
   # Epic 3: AI Categorization, Review & Correction Learning
   # Transactions are automatically categorized by an AI that learns from user corrections
   # ─────────────────────────────────────────────
-  epic-3: in-progress
-  3-1-litellm-categorizer-confidence-scoring-and-low-confidence-flagging: review
-  3-2-default-category-taxonomy-and-flagged-transaction-review-queue: review
-  3-3-one-click-category-correction: review
-  3-4-pattern-learning-within-upload-and-cross-upload-correction-memory: review
-  3-5-transaction-exclusion-from-monthly-totals: review
+  epic-3: done
+  3-1-litellm-categorizer-confidence-scoring-and-low-confidence-flagging: done
+  3-2-default-category-taxonomy-and-flagged-transaction-review-queue: done
+  3-3-one-click-category-correction: done
+  3-4-pattern-learning-within-upload-and-cross-upload-correction-memory: done
+  3-5-transaction-exclusion-from-monthly-totals: done
   epic-3-retrospective: optional
 
   # ─────────────────────────────────────────────
   # Epic 4: Spending Analysis & Transaction Explorer
   # Users can understand where their money went
   # ─────────────────────────────────────────────
-  epic-4: backlog
-  4-1-monthly-summary-api-and-kpi-dashboard-strip: backlog
-  4-2-spending-bar-chart: backlog
-  4-3-filterable-transaction-table: backlog
-  4-4-transaction-search: backlog
-  4-5-month-navigation-and-multi-month-trend-chart: backlog
+  epic-4: done
+  4-1-monthly-summary-api-and-kpi-dashboard-strip: done
+  4-2-spending-bar-chart: done
+  4-3-filterable-transaction-table: done
+  4-4-transaction-search: done
+  4-5-month-navigation-and-multi-month-trend-chart: done
   epic-4-retrospective: optional
 
   # ─────────────────────────────────────────────

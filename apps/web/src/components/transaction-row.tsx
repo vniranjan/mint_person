@@ -24,6 +24,8 @@ export interface Transaction {
 interface TransactionRowProps {
   transaction: Transaction;
   month: string;
+  /** TanStack Query key for the transaction list — used for optimistic updates. Defaults to ["transactions", month]. */
+  queryKey?: unknown[];
 }
 
 async function patchTransaction(id: string, data: { category?: string; isExcluded?: boolean }) {
@@ -43,18 +45,19 @@ async function patchTransaction(id: string, data: { category?: string; isExclude
  * Hover actions: CategoryPickerPopover (correction) + [Exclude]/[Include] toggle.
  * Optimistic updates via TanStack Query mutation.
  */
-export default function TransactionRow({ transaction: txn, month }: TransactionRowProps) {
+export default function TransactionRow({ transaction: txn, month, queryKey }: TransactionRowProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [corrected, setCorrected] = useState(false);
+  const txQueryKey = queryKey ?? ["transactions", month];
 
   // Correction mutation
   const correctionMutation = useMutation({
     mutationFn: (newCategory: string) => patchTransaction(txn.id, { category: newCategory }),
     onMutate: async (newCategory) => {
-      await queryClient.cancelQueries({ queryKey: ["transactions", month] });
-      const previous = queryClient.getQueryData(["transactions", month]);
-      queryClient.setQueryData(["transactions", month], (old: { data: Transaction[] } | undefined) => {
+      await queryClient.cancelQueries({ queryKey: txQueryKey });
+      const previous = queryClient.getQueryData(txQueryKey);
+      queryClient.setQueryData(txQueryKey, (old: { data: Transaction[] } | undefined) => {
         if (!old) return old;
         return {
           data: old.data.map((t) =>
@@ -76,7 +79,7 @@ export default function TransactionRow({ transaction: txn, month }: TransactionR
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(["transactions", month], context.previous);
+        queryClient.setQueryData(txQueryKey, context.previous);
       }
       toast({ title: "Failed to update category. Please try again.", variant: "destructive" });
     },
@@ -86,9 +89,9 @@ export default function TransactionRow({ transaction: txn, month }: TransactionR
   const exclusionMutation = useMutation({
     mutationFn: (newExcluded: boolean) => patchTransaction(txn.id, { isExcluded: newExcluded }),
     onMutate: async (newExcluded) => {
-      await queryClient.cancelQueries({ queryKey: ["transactions", month] });
-      const previous = queryClient.getQueryData(["transactions", month]);
-      queryClient.setQueryData(["transactions", month], (old: { data: Transaction[] } | undefined) => {
+      await queryClient.cancelQueries({ queryKey: txQueryKey });
+      const previous = queryClient.getQueryData(txQueryKey);
+      queryClient.setQueryData(txQueryKey, (old: { data: Transaction[] } | undefined) => {
         if (!old) return old;
         return {
           data: old.data.map((t) =>
@@ -100,7 +103,7 @@ export default function TransactionRow({ transaction: txn, month }: TransactionR
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(["transactions", month], context.previous);
+        queryClient.setQueryData(txQueryKey, context.previous);
       }
       toast({ title: "Failed to update transaction. Please try again.", variant: "destructive" });
     },

@@ -1,13 +1,21 @@
+import { useQuery } from "@tanstack/react-query";
+import { type Transaction } from "~/components/transaction-row";
+
+async function fetchTransactions(month: string): Promise<Transaction[]> {
+  const res = await fetch(`/api/transactions?month=${month}`);
+  if (!res.ok) throw new Error("Failed to fetch transactions");
+  const json = await res.json() as { data: Transaction[] };
+  return json.data;
+}
+
 /**
- * Transactions list hook stub.
- * Full implementation → Story 4.3 (Filterable Transaction Table)
- *
- * Architecture notes:
- * - Fetches GET /api/transactions with query params: month, categoryId, page, pageSize
- * - TanStack Query key: ["transactions", userId, { month, categoryId, page }]
- * - Pagination: pageSize=50 default
+ * Fetches all transactions for the given YYYY-MM month.
+ * Query key: ["transactions", month] — matches TransactionRow optimistic updates.
  */
-
-// TODO Story 4.3: Implement useTransactions hook
-
-export {};
+export function useTransactions(month: string) {
+  return useQuery({
+    queryKey: ["transactions", month],
+    queryFn: () => fetchTransactions(month),
+    staleTime: 30_000,
+  });
+}

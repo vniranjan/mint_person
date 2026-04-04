@@ -1,14 +1,28 @@
+import { useQuery } from "@tanstack/react-query";
+
+export interface SummaryData {
+  totalSpent: string;
+  byCategory: { category: string; total: string; pct: number }[];
+  transactionCount: number;
+  vsLastMonth: string | null;
+}
+
+async function fetchSummary(month: string): Promise<SummaryData> {
+  const res = await fetch(`/api/summary/${month}`);
+  if (!res.ok) throw new Error("Failed to fetch summary");
+  const json = await res.json() as { data: SummaryData };
+  return json.data;
+}
+
 /**
- * Monthly spending summary hook stub.
- * Full implementation → Story 4.1 (Monthly Summary API & KPI Dashboard Strip)
- *
- * Architecture notes:
- * - Fetches GET /api/summary/:month
- * - TanStack Query key: ["summary", userId, month]
- * - Month format: "YYYY-MM" string
- * - UX-DR4: NFR4 — render ≤1s from page navigation (client-side from cached data)
+ * Fetches monthly spending summary for the given YYYY-MM month.
+ * Backed by TanStack Query with 60s stale time.
+ * Single source of truth for the fetchSummary logic and SummaryData type.
  */
-
-// TODO Story 4.1: Implement useMonthSummary hook
-
-export {};
+export function useMonthSummary(month: string) {
+  return useQuery({
+    queryKey: ["summary", month],
+    queryFn: () => fetchSummary(month),
+    staleTime: 60_000,
+  });
+}
