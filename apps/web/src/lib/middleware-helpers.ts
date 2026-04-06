@@ -1,4 +1,6 @@
 import { type PrismaClient } from "@prisma/client";
+import { NextResponse } from "next/server";
+import { auth } from "~/lib/auth";
 import { prisma } from "~/lib/db";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,3 +56,35 @@ export const UNAUTHORIZED_RESPONSE = {
 export const FORBIDDEN_RESPONSE = {
   error: { code: "FORBIDDEN", message: "Insufficient permissions" },
 } as const;
+
+/**
+ * Guard for admin-only API routes.
+ *
+ * Returns `{ userId, response: null }` when the caller is authenticated as ADMIN.
+ * Returns `{ userId: null, response: NextResponse }` otherwise (401 or 403).
+ *
+ * Usage:
+ * ```typescript
+ * const { userId, response } = await requireAdmin();
+ * if (response) return response;
+ * ```
+ */
+export async function requireAdmin(): Promise<
+  | { userId: string; response: null }
+  | { userId: null; response: NextResponse }
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return {
+      userId: null,
+      response: NextResponse.json(UNAUTHORIZED_RESPONSE, { status: 401 }),
+    };
+  }
+  if (session.user.role !== "ADMIN") {
+    return {
+      userId: null,
+      response: NextResponse.json(FORBIDDEN_RESPONSE, { status: 403 }),
+    };
+  }
+  return { userId: session.user.id, response: null };
+}

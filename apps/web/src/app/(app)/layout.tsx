@@ -33,6 +33,14 @@ export default async function AppLayout({
               >
                 Settings
               </Link>
+              {session.user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="text-sm text-stone-500 hover:text-stone-900"
+                >
+                  Admin
+                </Link>
+              )}
               <form
                 action={async () => {
                   "use server";
