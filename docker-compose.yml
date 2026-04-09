@@ -44,8 +44,8 @@ services:
   # ── Next.js web app ──
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     ports:
       - "3000:3000"
