@@ -1,5 +1,19 @@
+# ── Dev stage: full node_modules for hot reload ──
+FROM node:20-alpine AS dev
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/db/package.json ./packages/db/
+RUN npm ci
+
+COPY . .
+WORKDIR /app/apps/web
+ENV NODE_ENV=development
+CMD ["sh", "-c", "npx prisma generate && npm run dev"]
+
 # ── Build stage: install dependencies ──
-# Build context must be the monorepo root (package-lock.json lives there)
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app

@@ -33,6 +33,7 @@ services:
       --tableHost 0.0.0.0
       --location /data
       --debug /data/debug.log
+      --skipApiVersionCheck
     volumes:
       - azurite_data:/data
     healthcheck:

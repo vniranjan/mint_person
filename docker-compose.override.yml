@@ -7,12 +7,12 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      # No target override — use full build so prisma generate runs
-    command: sh -c "cd apps/web && npx prisma generate && npm run dev"
+      target: dev
     volumes:
       - .:/app
-      - /app/node_modules      # Preserve container node_modules
-      - /app/apps/web/.next    # Preserve Next.js build cache
+      - /app/node_modules             # Preserve container node_modules (from npm ci)
+      - /app/apps/web/node_modules    # Preserve workspace node_modules
+      - /app/apps/web/.next           # Preserve Next.js build cache
     environment:
       NODE_ENV: development
 
