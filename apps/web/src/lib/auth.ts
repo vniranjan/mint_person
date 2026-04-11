@@ -1,6 +1,6 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+
 import bcryptjs from "bcryptjs";
 import { prisma } from "~/lib/db";
 
@@ -29,7 +29,6 @@ declare module "next-auth" {
  * protected routes are redirected to pages.signIn ("/login").
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
       credentials: {
@@ -67,13 +66,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   callbacks: {
-    session({ session, user }) {
-      // user comes from the database via PrismaAdapter and includes all fields.
-      // TypeScript only knows the default NextAuth User fields, so we cast for role.
-      session.user.id = user.id;
-      session.user.role = (user as typeof user & { role: "USER" | "ADMIN" }).role ?? "USER";
+    async jwt({ token, user }) {
+      // On sign-in, `user` is the object returned by `authorize()`.
+      // Persist id and role into the token so they survive across requests.
+      if (user) {
+        token.id = user.id;
+        // Re-fetch role from DB — authorize() only returns id/email/name.
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true, isActive: true },
+        });
+        token.role = dbUser?.role ?? "USER";
+        token.isActive = dbUser?.isActive ?? true;
+      }
+      return token;
+    },
+    session({ session, token }) {
+      session.user.id = token.id as string;
+      session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
       return session;
     },
     authorized({ auth: session }) {
